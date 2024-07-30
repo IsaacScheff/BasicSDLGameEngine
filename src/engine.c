@@ -23,6 +23,7 @@ bool Engine_Init(Engine *engine, const char *title, int width, int height) {
     }
 
     engine->isRunning = true;
+    engine->lastFrameTime = SDL_GetTicks(); // Initialize last frame time
     return true;
 }
 
@@ -31,19 +32,42 @@ void Engine_HandleEvents(Engine *engine) {
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
             engine->isRunning = false;
+        } else if (event.type == SDL_KEYDOWN) {
+            switch (event.key.keysym.sym) {
+                case SDLK_ESCAPE:
+                    engine->isRunning = false;
+                    break;
+            }
         }
     }
 }
 
-void Engine_Update(Engine *engine) {
-    // Update game state
+void Engine_Update(Engine *engine, GameObject *player) {
+    Uint32 currentFrameTime = SDL_GetTicks();
+    float deltaTime = (currentFrameTime - engine->lastFrameTime) / 1000.0f; // Time since last frame in seconds
+    engine->lastFrameTime = currentFrameTime;
+
+    const Uint8 *state = SDL_GetKeyboardState(NULL);
+    float speed = 300.0f; // Pixels per second
+    if (state[SDL_SCANCODE_UP]) {
+        player->y -= speed * deltaTime;
+    }
+    if (state[SDL_SCANCODE_DOWN]) {
+        player->y += speed * deltaTime;
+    }
+    if (state[SDL_SCANCODE_LEFT]) {
+        player->x -= speed * deltaTime;
+    }
+    if (state[SDL_SCANCODE_RIGHT]) {
+        player->x += speed * deltaTime;
+    }
 }
 
-void Engine_Render(Engine *engine) {
+void Engine_Render(Engine *engine, GameObject *player) {
     SDL_SetRenderDrawColor(engine->renderer, 0, 0, 0, 255);
     SDL_RenderClear(engine->renderer);
 
-    // Render game objects here
+    GameObject_Render(player, engine->renderer);
 
     SDL_RenderPresent(engine->renderer);
 }
@@ -52,4 +76,18 @@ void Engine_Clean(Engine *engine) {
     SDL_DestroyRenderer(engine->renderer);
     SDL_DestroyWindow(engine->window);
     SDL_Quit();
+}
+
+void GameObject_Init(GameObject *object, float x, float y, int width, int height, SDL_Color color) {
+    object->x = x;
+    object->y = y;
+    object->width = width;
+    object->height = height;
+    object->color = color;
+}
+
+void GameObject_Render(GameObject *object, SDL_Renderer *renderer) {
+    SDL_SetRenderDrawColor(renderer, object->color.r, object->color.g, object->color.b, object->color.a);
+    SDL_Rect rect = { (int)object->x, (int)object->y, object->width, object->height };
+    SDL_RenderFillRect(renderer, &rect);
 }
